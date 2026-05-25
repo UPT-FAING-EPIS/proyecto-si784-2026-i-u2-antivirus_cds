@@ -1,0 +1,5 @@
+import joblib
+from sklearn.ensemble import RandomForestClassifier
+model = RandomForestClassifier()
+model.fit([[0,0]], [0])
+joblib.dump(model, 'data/ml_models/classifier.pkl')
