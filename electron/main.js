@@ -37,6 +37,7 @@ import { updateSignatures, scanTarget, quickScan, fullScan, cancelActiveScan } f
 import { quarantineFile, restoreFile, deletePermanently } from './quarantine.js';
 import { getQuarantineRecords, getScanHistory } from './db.js';
 import { startWatcher, stopWatcher, getWatcherStatus } from './watcher.js';
+import { startAntiRansomware, stopAntiRansomware, getAntiRansomwareStatus } from './honeypot.js';
 import { ipcMain, dialog } from 'electron';
 
 // Register IPC handlers
@@ -140,6 +141,19 @@ ipcMain.handle('get-realtime-status', async () => {
   return getWatcherStatus();
 });
 
+ipcMain.handle('toggle-antiransomware', async (event, enable) => {
+  if (enable) {
+    startAntiRansomware();
+  } else {
+    await stopAntiRansomware();
+  }
+  return getAntiRansomwareStatus();
+});
+
+ipcMain.handle('get-antiransomware-status', async () => {
+  return getAntiRansomwareStatus();
+});
+
 // Window controls
 ipcMain.on('window-minimize', () => {
   const win = BrowserWindow.getFocusedWindow();
@@ -162,7 +176,13 @@ ipcMain.on('window-close', () => {
   if (win) win.close();
 });
 
+import { startClamdService, stopClamdService } from './clamd_service.js';
+import { generateClamAVConfigs } from './config_generator.js';
+
 app.whenReady().then(async () => {
+  // Generar archivos de configuración de ClamAV en userData
+  generateClamAVConfigs();
+
   // T-38: Pantalla de splash
   const splash = new BrowserWindow({
     width: 400,
@@ -190,6 +210,20 @@ app.whenReady().then(async () => {
     console.warn(`[Freshclam Aviso] No se pudo actualizar firmas automáticamente. Asegúrate de tener configurado freshclam.conf. Detalle: ${err.message}`);
   }
 
+  // Iniciar demonio Clamd
+  try {
+    if (splash && !splash.isDestroyed()) {
+      splash.webContents.send('splash-status', 'Cargando Motor Antivirus (clamd) en memoria...');
+    }
+    
+    await startClamdService(
+      (log) => console.log(log.rawLine),
+      () => console.log('[Main] Motor Antivirus Listo.')
+    );
+  } catch (err) {
+    console.error(`[Clamd Error] No se pudo iniciar el servicio clamd: ${err.message}`);
+  }
+
   // Finalizar splash y abrir ventana principal
   createWindow();
   if (splash && !splash.isDestroyed()) {
@@ -204,6 +238,7 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+  stopClamdService();
   if (process.platform !== 'darwin') {
     app.quit();
   }

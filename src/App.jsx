@@ -1,13 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Scan from './pages/Scan';
 import RealTime from './pages/RealTime';
 import Quarantine from './pages/Quarantine';
 import History from './pages/History';
+import RansomwareAlertModal from './components/RansomwareAlertModal';
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
+  const [ransomwareAlertData, setRansomwareAlertData] = useState(null);
+
+  useEffect(() => {
+    // Listen for Ransomware alert
+    if (window.electronAPI) {
+      window.electronAPI.onRansomwareAlert((data) => {
+        setRansomwareAlertData(data);
+      });
+    }
+  }, []);
 
   const renderView = () => {
     switch (currentView) {
@@ -21,9 +32,15 @@ function App() {
   };
 
   return (
-    <Layout currentView={currentView} setCurrentView={setCurrentView}>
-      {renderView()}
-    </Layout>
+    <>
+      <Layout currentView={currentView} setCurrentView={setCurrentView}>
+        {renderView()}
+      </Layout>
+      <RansomwareAlertModal 
+        data={ransomwareAlertData} 
+        onDismiss={() => setRansomwareAlertData(null)} 
+      />
+    </>
   );
 }
 

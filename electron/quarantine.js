@@ -1,16 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { insertQuarantineRecord, markQuarantineRestored, getQuarantineRecords } from './db.js';
 import { writeLog } from './logger.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const QUARANTINE_DIR = path.join(__dirname, '../quarantine');
-
-if (!fs.existsSync(QUARANTINE_DIR)) {
-  fs.mkdirSync(QUARANTINE_DIR, { recursive: true });
-}
+import { QUARANTINE_DIR } from './paths.js';
 
 /**
  * Mueve un archivo a la carpeta de cuarentena y registra la acción (T-20, T-21)

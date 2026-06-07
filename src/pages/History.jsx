@@ -6,6 +6,7 @@ export default function History() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeLog, setActiveLog] = useState(null);
+  const [activeRecord, setActiveRecord] = useState(null);
 
   const fetchHistory = async () => {
     if (window.electronAPI) {
@@ -34,9 +35,9 @@ export default function History() {
     }
   };
 
-  const handleOpenLog = async (logPath) => {
-    if (window.electronAPI && logPath) {
-      const content = await window.electronAPI.readLog(logPath);
+  const handleOpenLog = async (record) => {
+    if (window.electronAPI && record.log_file) {
+      const content = await window.electronAPI.readLog(record.log_file);
       const parsedLogs = content.split('\n')
         .filter(line => line.trim() !== '')
         .map(line => {
@@ -45,6 +46,7 @@ export default function History() {
           return { level, rawLine: line };
         });
       setActiveLog(parsedLogs);
+      setActiveRecord(record);
     }
   };
 
@@ -142,7 +144,7 @@ export default function History() {
                     <td className="px-6 py-4 flex justify-end">
                       {record.log_file && (
                         <button 
-                          onClick={() => handleOpenLog(record.log_file)}
+                          onClick={() => handleOpenLog(record)}
                           className="p-2 text-[var(--text-muted)] hover:text-[var(--accent-info)] transition-colors rounded hover:bg-[var(--accent-info)]/10"
                           title="Abrir archivo de log"
                         >
@@ -167,10 +169,34 @@ export default function History() {
                 <FileText size={18} className="text-[var(--accent-info)]" />
                 Registro del Escaneo
               </h2>
-              <button onClick={() => setActiveLog(null)} className="text-[var(--text-muted)] hover:text-white transition-colors">
+              <button onClick={() => { setActiveLog(null); setActiveRecord(null); }} className="text-[var(--text-muted)] hover:text-white transition-colors">
                 <X size={20} />
               </button>
             </div>
+            
+            {activeRecord && (
+              <div className="p-4 bg-[var(--bg-base)] border-b border-[var(--border)] grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <p className="text-[var(--text-muted)] text-xs uppercase font-semibold tracking-wider">Tipo de Escaneo</p>
+                  <p className="font-medium text-[var(--text-primary)] mt-1">{getScanTypeLabel(activeRecord.scan_type)}</p>
+                </div>
+                <div>
+                  <p className="text-[var(--text-muted)] text-xs uppercase font-semibold tracking-wider">Fecha y Hora</p>
+                  <p className="font-medium text-[var(--text-primary)] mt-1">{new Date(activeRecord.started_at).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[var(--text-muted)] text-xs uppercase font-semibold tracking-wider">Archivos Analizados</p>
+                  <p className="font-medium text-[var(--text-primary)] mt-1">{activeRecord.files_scanned.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[var(--text-muted)] text-xs uppercase font-semibold tracking-wider">Amenazas</p>
+                  <p className={`font-bold mt-1 ${activeRecord.threats_found > 0 ? 'text-[var(--accent-danger)]' : 'text-[var(--accent-primary)]'}`}>
+                    {activeRecord.threats_found}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="flex-1 overflow-hidden p-4">
               <LogViewer logs={activeLog} />
             </div>

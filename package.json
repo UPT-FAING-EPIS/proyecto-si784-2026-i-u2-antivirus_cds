@@ -1,7 +1,7 @@
 {
   "name": "rustguard",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
@@ -19,13 +19,43 @@
       "output": "release"
     },
     "win": {
-      "icon": "public/icon.png",
-      "target": ["nsis"]
+      "icon": "public/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "public/icon.ico",
+      "uninstallerIcon": "public/icon.ico",
+      "installerHeaderIcon": "public/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "RustGuard"
+    },
+    "portable": {
+      "artifactName": "RustGuard-Portable-${version}.${ext}"
     },
     "files": [
       "dist/**/*",
       "electron/**/*",
       "public/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "clamav_db",
+        "to": "clamav_db",
+        "filter": ["**/*"]
+      }
     ]
   },
   "dependencies": {

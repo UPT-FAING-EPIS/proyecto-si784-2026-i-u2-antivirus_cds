@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# RustGuard - Data directories (generated at runtime)
+db/
+quarantine/
+clamav_db/
+
+# Build output
+release/

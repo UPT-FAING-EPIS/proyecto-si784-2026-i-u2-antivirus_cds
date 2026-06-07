@@ -1,15 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const DB_DIR = path.join(__dirname, '../db');
-
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
-}
+import { DB_DIR } from './paths.js';
 
 const dbPath = path.join(DB_DIR, 'rustguard.db');
 const db = new Database(dbPath);

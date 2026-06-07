@@ -57,12 +57,28 @@ export function getWatcherStatus() {
   return isRealTimeEnabled;
 }
 
+let scanQueue = [];
+let isScanning = false;
+
 /**
- * Analiza el archivo modificado/añadido (T-26)
+ * Analiza el archivo modificado/añadido (T-26) pero usando una COLA
  */
-async function handleFileChange(filePath) {
-  writeLog('INFO', `Monitoreo: Archivo modificado detectado -> ${filePath}`);
+function handleFileChange(filePath) {
+  writeLog('INFO', `Monitoreo: Archivo encolado para escaneo -> ${filePath}`);
   
+  if (!scanQueue.includes(filePath)) {
+    scanQueue.push(filePath);
+  }
+  
+  processQueue();
+}
+
+async function processQueue() {
+  if (isScanning || scanQueue.length === 0) return;
+  
+  isScanning = true;
+  const filePath = scanQueue.shift();
+
   try {
     const summary = await scanTarget(filePath);
     
@@ -87,6 +103,12 @@ async function handleFileChange(filePath) {
     }
   } catch (error) {
     writeLog('ERROR', `Error al escanear archivo en tiempo real: ${error.message}`);
+  } finally {
+    isScanning = false;
+    // Procesar el siguiente archivo si hay
+    if (scanQueue.length > 0) {
+      processQueue();
+    }
   }
 }
 

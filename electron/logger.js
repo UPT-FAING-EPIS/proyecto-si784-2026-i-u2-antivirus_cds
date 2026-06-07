@@ -1,11 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { BrowserWindow } from 'electron';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const LOGS_DIR = path.join(__dirname, '../logs');
+import { LOGS_DIR } from './paths.js';
 
 let currentLogStream = null;
 let currentLogFilePath = null;
@@ -15,9 +11,6 @@ let currentLogFilePath = null;
  * Format: YYYY-MM-DD_HH-MM-SS.log
  */
 export function initSessionLog() {
-  if (!fs.existsSync(LOGS_DIR)) {
-    fs.mkdirSync(LOGS_DIR, { recursive: true });
-  }
 
   const now = new Date();
   const pad = (n) => n.toString().padStart(2, '0');

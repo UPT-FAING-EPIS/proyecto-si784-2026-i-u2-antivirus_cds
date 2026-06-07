@@ -4,14 +4,20 @@ import LogViewer from '../components/LogViewer';
 
 export default function RealTime() {
   const [realtimeStatus, setRealtimeStatus] = useState(false);
+  const [antiRansomwareStatus, setAntiRansomwareStatus] = useState(false);
   const [logs, setLogs] = useState([]);
 
   useEffect(() => {
     if (window.electronAPI) {
       window.electronAPI.getRealtimeStatus().then(setRealtimeStatus);
+      window.electronAPI.getAntiransomwareStatus().then(setAntiRansomwareStatus);
       
       window.electronAPI.onRealtimeStatusChanged((status) => {
         setRealtimeStatus(status);
+      });
+
+      window.electronAPI.onAntiransomwareStatusChanged((status) => {
+        setAntiRansomwareStatus(status);
       });
 
       // Capture logs relevant to real-time (we will capture all logs for simplicity, 
@@ -28,6 +34,15 @@ export default function RealTime() {
       setRealtimeStatus(newStatus);
     } else {
       setRealtimeStatus(!realtimeStatus);
+    }
+  };
+
+  const handleAntiransomwareToggle = async () => {
+    if (window.electronAPI) {
+      const newStatus = await window.electronAPI.toggleAntiransomware(!antiRansomwareStatus);
+      setAntiRansomwareStatus(newStatus);
+    } else {
+      setAntiRansomwareStatus(!antiRansomwareStatus);
     }
   };
 
@@ -64,6 +79,33 @@ export default function RealTime() {
           className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${realtimeStatus ? 'bg-[var(--accent-primary)]' : 'bg-[var(--border)]'}`}
         >
           <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${realtimeStatus ? 'translate-x-7' : 'translate-x-1'}`} />
+        </button>
+      </div>
+
+      <div className="bg-[var(--bg-panel)] rounded-xl border border-[var(--border)] p-8 mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          <div className={`p-4 rounded-full transition-colors duration-500 ${antiRansomwareStatus ? 'bg-red-500/20 text-red-500' : 'bg-[var(--bg-card)] text-[var(--text-muted)]'}`}>
+            {antiRansomwareStatus ? <ShieldCheck size={48} /> : <ShieldAlert size={48} />}
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+              Anti-Ransomware (Heurística): <span className={antiRansomwareStatus ? 'text-red-500' : 'text-[var(--text-muted)]'}>
+                {antiRansomwareStatus ? 'ACTIVO' : 'INACTIVO'}
+              </span>
+            </h2>
+            <p className="text-sm text-[var(--text-muted)] mt-1">
+              {antiRansomwareStatus 
+                ? 'Vigilando archivos señuelo para detectar cifrado masivo en tiempo real.' 
+                : 'Protección avanzada desactivada. Vulnerable a ataques de Día Cero.'}
+            </p>
+          </div>
+        </div>
+
+        <button 
+          onClick={handleAntiransomwareToggle}
+          className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${antiRansomwareStatus ? 'bg-red-500' : 'bg-[var(--border)]'}`}
+        >
+          <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${antiRansomwareStatus ? 'translate-x-7' : 'translate-x-1'}`} />
         </button>
       </div>
 
