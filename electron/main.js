@@ -38,6 +38,7 @@ import { quarantineFile, restoreFile, deletePermanently } from './quarantine.js'
 import { getQuarantineRecords, getScanHistory } from './db.js';
 import { startWatcher, stopWatcher, getWatcherStatus } from './watcher.js';
 import { startAntiRansomware, stopAntiRansomware, getAntiRansomwareStatus } from './honeypot.js';
+import { scanFullProject } from './projectScanner.js';
 import { ipcMain, dialog } from 'electron';
 
 // Register IPC handlers
@@ -65,6 +66,11 @@ ipcMain.handle('select-folder', async () => {
     properties: ['openDirectory']
   });
   return result.canceled ? null : result.filePaths[0];
+});
+
+// Project analysis handler
+ipcMain.handle('scan-project', async (event, targetPath) => {
+  return await scanFullProject(targetPath);
 });
 
 ipcMain.handle('quarantine-file', async (event, originalPath, threatName) => {

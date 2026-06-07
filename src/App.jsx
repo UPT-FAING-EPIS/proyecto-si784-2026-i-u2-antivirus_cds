@@ -5,6 +5,7 @@ import Scan from './pages/Scan';
 import RealTime from './pages/RealTime';
 import Quarantine from './pages/Quarantine';
 import History from './pages/History';
+import ProjectAnalysis from './pages/ProjectAnalysis';
 import RansomwareAlertModal from './components/RansomwareAlertModal';
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
       case 'realtime': return <RealTime />;
       case 'quarantine': return <Quarantine />;
       case 'history': return <History />;
+      case 'project-analysis': return <ProjectAnalysis />;
       default: return <Dashboard setCurrentView={setCurrentView} />;
     }
   };

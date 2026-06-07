@@ -55,6 +55,11 @@
         "from": "clamav_db",
         "to": "clamav_db",
         "filter": ["**/*"]
+      },
+      {
+        "from": "bin",
+        "to": "bin",
+        "filter": ["**/*"]
       }
     ]
   },

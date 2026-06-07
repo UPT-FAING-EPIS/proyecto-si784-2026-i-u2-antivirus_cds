@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, ScanSearch, Activity, ShieldAlert, History } from 'lucide-react';
+import { LayoutDashboard, ScanSearch, Activity, ShieldAlert, History, FolderCode } from 'lucide-react';
 
 export default function Sidebar({ currentView, setCurrentView }) {
   const menuItems = [
@@ -8,6 +8,7 @@ export default function Sidebar({ currentView, setCurrentView }) {
     { id: 'realtime', label: 'Tiempo Real', icon: Activity },
     { id: 'quarantine', label: 'Cuarentena', icon: ShieldAlert },
     { id: 'history', label: 'Historial', icon: History },
+    { id: 'project-analysis', label: 'Proyectos', icon: FolderCode },
   ];
 
   return (

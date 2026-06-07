@@ -34,6 +34,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onRansomwareAlert: (callback) => ipcRenderer.on('ransomware-alert', (_event, data) => callback(data)),
   onAntiransomwareStatusChanged: (callback) => ipcRenderer.on('antiransomware-status-changed', (_event, data) => callback(data)),
 
+  // Project Analysis methods
+  scanProject: (targetPath) => ipcRenderer.invoke('scan-project', targetPath),
+
   // Window controls
   minimizeWindow: () => ipcRenderer.send('window-minimize'),
   maximizeWindow: () => ipcRenderer.send('window-maximize'),
