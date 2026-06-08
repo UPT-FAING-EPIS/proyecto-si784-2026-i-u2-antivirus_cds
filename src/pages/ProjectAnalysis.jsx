@@ -83,7 +83,34 @@ export default function ProjectAnalysis() {
 
   // Compute stats
   const secretsList = results?.secrets?.findings || results?.secrets?.results || [];
-  const depsList = results?.dependencies?.vulnerabilities || results?.dependencies?.results || [];
+  let depsList = [];
+  if (results?.dependencies) {
+    if (results.dependencies.vulnerabilities) {
+      depsList = results.dependencies.vulnerabilities;
+    } else if (results.dependencies.results) {
+      depsList = results.dependencies.results;
+    } else if (results.dependencies.directVulnerable || results.dependencies.transitiveVulnerable) {
+      const allDeps = [
+        ...(results.dependencies.directVulnerable || []),
+        ...(results.dependencies.transitiveVulnerable || [])
+      ];
+      
+      allDeps.forEach(dep => {
+        if (dep.vulnerabilities && Array.isArray(dep.vulnerabilities)) {
+          dep.vulnerabilities.forEach(vuln => {
+            depsList.push({
+              dependency: dep.artifactId || dep.name || 'Desconocido',
+              version: dep.version || dep.currentVersion || '—',
+              cve: vuln.cveId || vuln.cve || '—',
+              severity: vuln.severity || 'INFO',
+              description: vuln.description,
+              chain: dep.coordinate || `${dep.groupId}:${dep.artifactId}`
+            });
+          });
+        }
+      });
+    }
+  }
 
   const secretsCount = secretsList.length;
   const depsCount = depsList.length;

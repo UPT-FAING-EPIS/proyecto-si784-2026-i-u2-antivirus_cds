@@ -66,6 +66,9 @@ function runBinary(binPath, args) {
   });
 }
 
+import fs from 'node:fs';
+import os from 'node:os';
+
 /**
  * Ejecuta el escáner de secretos (Python compilado) sobre la ruta indicada.
  * @param {string} targetPath - Ruta del proyecto a analizar
@@ -74,8 +77,9 @@ function runBinary(binPath, args) {
 export async function runSecretScanner(targetPath) {
   const binName = process.platform === 'win32' ? 'secret-scanner.exe' : 'secret-scanner';
   const binPath = getBinPath(binName);
-  return runBinary(binPath, ['--target', targetPath, '--format', 'json']);
+  return runBinary(binPath, ['--target', targetPath, '--format', 'json', '--silent']);
 }
+
 
 /**
  * Ejecuta el analizador de dependencias (Kotlin compilado) sobre la ruta indicada.
@@ -85,7 +89,41 @@ export async function runSecretScanner(targetPath) {
 export async function runDependencyAnalyzer(targetPath) {
   const binName = process.platform === 'win32' ? 'dep-analyzer.exe' : 'dep-analyzer';
   const binPath = getBinPath(binName);
-  return runBinary(binPath, ['--path', targetPath, '--format', 'json']);
+  
+  return new Promise((resolve, reject) => {
+    let stdout = '';
+    let stderr = '';
+    // Ejecutamos pasándole la ruta como CWD para que el reporte se genere dentro de esa ruta.
+    // Usamos --tree-depth=0 para evitar que el JSON sea gigantesco y crashee la memoria de NodeJS
+    const proc = spawn(binPath, ['analyze', '.', '--tree-depth=0', '-o', 'json'], {
+      cwd: targetPath,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    
+    proc.stdout.on('data', chunk => { stdout += chunk.toString(); });
+    proc.stderr.on('data', chunk => { stderr += chunk.toString(); });
+    
+    proc.on('error', err => reject(new Error(`Error al ejecutar dep-analyzer: ${err.message}`)));
+    
+    proc.on('close', code => {
+      // dep-analyzer escribe el JSON en "dependency-report.json" en su directorio de trabajo
+      const reportFile = path.join(targetPath, 'dependency-report.json');
+      
+      try {
+        if (fs.existsSync(reportFile)) {
+          const result = JSON.parse(fs.readFileSync(reportFile, 'utf-8'));
+          fs.unlinkSync(reportFile); // Limpiamos el archivo
+          resolve(result);
+        } else {
+          // Si falló rotundamente
+          reject(new Error(`dep-analyzer no generó el reporte. Stdout: ${stdout.trim()} | Stderr: ${stderr.trim()}`));
+        }
+      } catch (err) {
+        reject(new Error(`No se pudo leer el reporte JSON: ${err.message}`));
+      }
+    });
+  });
 }
 
 /**

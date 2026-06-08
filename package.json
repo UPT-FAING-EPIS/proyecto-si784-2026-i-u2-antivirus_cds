@@ -23,11 +23,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -54,12 +58,16 @@
       {
         "from": "clamav_db",
         "to": "clamav_db",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "bin",
         "to": "bin",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ]
   },
@@ -78,7 +86,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "concurrently": "^10.0.1",
     "cross-env": "^10.1.0",
-    "electron": "^31.0.0",
+    "electron": "^33.0.0",
     "electron-builder": "^26.8.1",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
