@@ -4,6 +4,7 @@ import os from 'os';
 import chokidar from 'chokidar';
 import { BrowserWindow } from 'electron';
 import { writeLog } from './logger.js';
+import { execSync } from 'child_process';
 
 let honeypotWatcher = null;
 let isAntiRansomwareEnabled = false;
@@ -13,7 +14,7 @@ const userProfile = os.homedir();
 const HONEYPOT_NAMES = ['.rg_canary.docx', '.rg_canary.jpg'];
 const TARGET_DIRS = [
   path.join(userProfile, 'Documents'),
-  path.join(userProfile, 'Desktop')
+  path.join(userProfile, 'Pictures')
 ];
 
 let activeHoneypots = [];
@@ -37,9 +38,11 @@ function deployHoneypots() {
         // For simplicity and cross-platform compatibility, starting with '.' hides it on Linux/Mac.
         // On Windows it just makes it look like a system file extension, but we can call a command.
         if (os.platform() === 'win32') {
-          import('child_process').then(({ exec }) => {
-            exec(`attrib +h "${filePath}"`);
-          });
+          try {
+            execSync(`attrib +h "${filePath}"`);
+          } catch (e) {
+            writeLog('WARNING', `No se pudo ocultar el honeypot en Windows: ${e.message}`);
+          }
         }
         
         activeHoneypots.push(filePath);
@@ -59,10 +62,10 @@ function removeHoneypots() {
       if (fs.existsSync(filePath)) {
         // Remove hidden attribute first on Windows if needed, though fs.unlinkSync usually works
         if (os.platform() === 'win32') {
-           import('child_process').then(({ execSync }) => {
-             try { execSync(`attrib -h "${filePath}"`); } catch(e){}
-             fs.unlinkSync(filePath);
-           });
+          try { 
+            execSync(`attrib -h "${filePath}"`); 
+          } catch(e) {}
+          fs.unlinkSync(filePath);
         } else {
           fs.unlinkSync(filePath);
         }

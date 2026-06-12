@@ -30,7 +30,9 @@ clamav_db/
 
 # Build output
 release/
+empaquetado/
 
 # External scanner binaries (not tracked - see bin/README.md)
 bin/*.exe
 bin/*.bin
+bin/clamav/

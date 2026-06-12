@@ -1,0 +1,46 @@
+name: Unit Tests & Mutation Testing
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Tests and Publish to GH Pages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Unit Tests with Coverage (Jest)
+        run: npm run test:coverage || true # Evitar fallar para continuar con mutación
+
+      - name: Run Mutation Testing (Stryker)
+        run: npx stryker run || true
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact for GH Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './reports' # Directorio donde Stryker/Jest guardarán los reportes HTML
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -16,7 +16,7 @@
     "appId": "com.rustguard.app",
     "productName": "RustGuard",
     "directories": {
-      "output": "release"
+      "output": "empaquetado"
     },
     "win": {
       "icon": "public/icon.ico",

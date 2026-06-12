@@ -2,12 +2,20 @@ import { spawn } from 'child_process';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { initSessionLog, writeLog, getCurrentLogFilePath } from './logger.js';
 import { insertScanStart, updateScanFinish } from './db.js';
 import { CLAMAV_DB_DIR, FRESHCLAM_CONF_PATH, CLAMD_CONF_PATH } from './paths.js';
 
-// Default path for ClamAV installation on Windows via Winget
-const CLAMAV_DIR = 'C:\\Program Files\\ClamAV';
+// Determinar la ruta de los binarios de ClamAV
+// En desarrollo: carpeta bin/clamav del proyecto
+// En producción (empaquetado): carpeta resources/bin/clamav
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const isDev = process.env.NODE_ENV === 'development';
+const CLAMAV_DIR = isDev
+  ? path.join(__dirname, '..', 'bin', 'clamav')
+  : path.join(process.resourcesPath, 'bin', 'clamav');
 const CLAMDSCAN_EXE = path.join(CLAMAV_DIR, 'clamdscan.exe');
 const FRESHCLAM_EXE = path.join(CLAMAV_DIR, 'freshclam.exe');
 

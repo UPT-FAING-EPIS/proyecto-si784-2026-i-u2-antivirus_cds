@@ -1,0 +1,40 @@
+name: Playwright UI Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  e2e:
+    name: End-to-End Tests
+    runs-on: windows-latest # Porque Electron interactúa con OS local
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: npx playwright test
+
+      - name: Upload Test Report and Videos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-videos-and-report
+          path: playwright-report/
+          retention-days: 14
