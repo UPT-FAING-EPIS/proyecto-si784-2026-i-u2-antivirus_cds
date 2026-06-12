@@ -65,7 +65,42 @@ Versión *1.0*
 El presente informe documenta el estado y la estructura real de la arquitectura del sistema **RustGuard Antivirus**, obtenidos mediante procesos de ingeniería inversa aplicados directamente sobre el repositorio fuente (stack React + Vite + Node.js + Electron). 
 Al tratarse de una aplicación Electron, el sistema acata estrictamente el modelo multi-proceso de Chromium: dividiendo el código en un *Proceso Principal* (Main Process, con acceso pleno al SO) y un *Proceso Renderizador* (Renderer Process, aislado y seguro que gestiona la UI). Toda comunicación transcurre en túneles IPC (Inter-Process Communication) controlados por un script intermedio o *Preload*.
 
-## 2. Diagrama de Arquitectura Lógica
+## 2. Diagrama de Casos de Uso
+
+El diagrama de casos de uso describe las interacciones principales entre los actores (el Usuario y el Sistema Operativo) con las funcionalidades principales de RustGuard Antivirus.
+
+```mermaid
+usecaseDiagram
+    actor Usuario
+    actor "Sistema Operativo (FS)" as SO
+
+    package "RustGuard Antivirus" {
+        usecase "Realizar Escaneo Rápido" as UC1
+        usecase "Realizar Escaneo Completo" as UC2
+        usecase "Seleccionar Carpeta para Escaneo" as UC3
+        usecase "Ver Historial de Escaneos" as UC4
+        usecase "Exportar Reporte (.txt)" as UC5
+        usecase "Restaurar Archivo" as UC6
+        usecase "Activar Protección en Tiempo Real" as UC7
+        usecase "Detectar Nuevo Archivo" as UC8
+        usecase "Aislar Amenaza Automáticamente" as UC9
+    }
+
+    Usuario --> UC1
+    Usuario --> UC2
+    Usuario --> UC3
+    Usuario --> UC4
+    Usuario --> UC5
+    Usuario --> UC6
+    Usuario --> UC7
+
+    UC7 ..> UC8 : <<include>>
+    UC8 ..> UC9 : <<extends>>
+    
+    SO --> UC8
+```
+
+## 3. Diagrama de Arquitectura Lógica
 
 Este esquema macro muestra cómo RustGuard orquesta su carga de trabajo. La seguridad estructural se basa en aislar la capa visual construida con React (que no puede borrar ni acceder al disco duro por sí sola) de los módulos Node.js que tienen permisos de manipulación sobre ClamAV y el File System.
 

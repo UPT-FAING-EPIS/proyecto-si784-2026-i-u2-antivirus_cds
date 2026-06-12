@@ -108,29 +108,23 @@ Todo requerimiento de mejora o corrección de error se documentará en la pesta�
 ## 4. Roadmap del Proyecto (Hoja de Ruta)
 La hoja de ruta define los hitos del ciclo de vida de desarrollo de software organizados temporalmente, asegurando una evolución sostenible de RustGuard.
 
-- **Fase 1: Fundación y Arquitectura (Semanas 1-4)**
-  - Configuración del monorepo (Electron + React + Vite).
-  - Implementación del diseño frameless y componentes Tailwind base.
-  - Implementación del Splash Screen de Carga.
-  - Habilitación del contexto seguro `preload.cjs`.
+### Versión 1.0: Fundación y Protección Base (MVP)
+*Duración estimada: 16 semanas*
+- **Semanas 1-4:** Arquitectura Base. Configuración del monorepo (Electron + React + Vite). Habilitación del contexto seguro `preload.cjs` e interfaz frameless.
+- **Semanas 5-8:** Motor Antivirus. Integración nativa del binario ClamAV. Flujos de Escaneo (Rápido, Completo, Personalizado) y actualizador de firmas (`freshclam`).
+- **Semanas 9-12:** Monitoreo y Cuarentena. Integración de SQLite (`better-sqlite3`). Watcher en tiempo real (`chokidar`) y aislamiento de archivos.
+- **Semanas 13-16:** Estabilización. Exportación de historiales a `.txt`, empaquetado NSIS para Windows y publicación del Release Oficial en GitHub.
 
-- **Fase 2: Motor Antivirus y Scanners (Semanas 5-8)**
-  - Integración nativa del binario ClamAV.
-  - Codificación y mapeo de los flujos para: Escaneo Rápido, Completo y Personalizado.
-  - Implementación del actualizador de firmas mediante `freshclam` al arrancar la app.
-  - Creación del parser de stdout para las barras de progreso en la UI.
+### Versión 2.0: Telemetría y Ecosistema en la Nube
+*Duración estimada: 12 semanas*
+- **Mes 1:** Infraestructura. Despliegue de infraestructura en AWS mediante Terraform (S3, RDS PostgreSQL, Lambda).
+- **Mes 2:** Telemetría Opcional. Los clientes de RustGuard envían metadatos anónimos de las amenazas detectadas a la base de datos global.
+- **Mes 3:** Panel Web. Lanzamiento de un Dashboard web en React para visualizar mapas globales de calor de malware detectado por los nodos de RustGuard.
 
-- **Fase 3: Persistencia y Monitoreo Activo (Semanas 9-12)**
-  - Diseño de la base de datos `rustguard.db` en SQLite.
-  - Implementación total de las vistas "Historial de Escaneos".
-  - Codificación del sistema de Cuarentena (mecanismo para renombrar, mover y restaurar amenazas desde/hacia `.rustguard_quarantine`).
-  - Activación del *Watcher* (`chokidar`) para monitorear el sistema de archivos del usuario en tiempo real.
-
-- **Fase 4: Estabilización, Testing y Release (Semanas 13-16)**
-  - Funcionalidad de Exportación de Historiales a formato `.txt`.
-  - Configuración del empaquetador `electron-builder` (NSIS Installer para Windows).
-  - Ejecución de pruebas con la firma de malware inofensiva *EICAR* para verificar que la Cuarentena responde correctamente.
-  - Población final de la GitHub Wiki.
+### Versión 3.0: Análisis Heurístico con Machine Learning
+*Duración estimada: 16 semanas*
+- **Mes 1-2:** Recolección de Datos y Entrenamiento. Entrenar un modelo de clasificación binaria estática utilizando un dataset público de binarios limpios y maliciosos.
+- **Mes 3-4:** Motor Híbrido. Integrar el modelo ONNX dentro del pipeline de Node.js, complementando la detección de firmas clásica de ClamAV con predicciones heurísticas para ataques de "Día Cero" (Zero-day).
 
 ## 5. Alcance y Limitaciones del Sistema
 Es indispensable establecer las fronteras técnicas de lo que RustGuard puede y no puede hacer.

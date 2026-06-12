@@ -97,7 +97,8 @@ Versión *1.0*
 
 A continuación se plantean los escenarios de prueba BDD (Behavior-Driven Development) necesarios para asegurar la calidad de la lógica de la aplicación.
 
-### Escenario 1: Ejecución y Registro de un Escaneo Exitoso
+### Criterio de Aceptación 1: Ejecución y Registro de Escaneos
+**Escenario 1.1: Ejecución y Registro de un Escaneo Exitoso**
 **DADO** que la base de datos de firmas de ClamAV está funcional e indexada
 **Y** el usuario se encuentra en la vista principal (Home)
 **CUANDO** el usuario hace clic en el botón "Iniciar Escaneo Completo"
@@ -105,31 +106,66 @@ A continuación se plantean los escenarios de prueba BDD (Behavior-Driven Develo
 **Y** el backend (Node.js) debe crear un registro en la tabla `scan_history` con estado "running"
 **Y** al concluir el proceso, el registro debe ser actualizado con la cantidad exacta de archivos escaneados y marcando su estado como "done".
 
-### Escenario 2: Intercepción de una amenaza y Envío a Cuarentena
+**Escenario 1.2: Cancelación o Error durante un Escaneo**
+**DADO** que un escaneo se encuentra en ejecución con estado "running"
+**CUANDO** ocurre un error inesperado (ej. falta de permisos o el proceso `clamscan` muere)
+**ENTONCES** el backend debe capturar la excepción
+**Y** el registro en la tabla `scan_history` debe actualizarse a estado "error"
+**Y** el frontend debe mostrar una notificación roja indicando que el escaneo no pudo finalizar.
+
+### Criterio de Aceptación 2: Intercepción y Aislamiento de Amenazas
+**Escenario 2.1: Intercepción de una amenaza y Envío a Cuarentena**
 **DADO** que se está realizando un análisis sobre una carpeta que contiene el archivo de prueba EICAR (Malware genérico inofensivo)
 **CUANDO** el proceso hijo de `clamscan` emite el mensaje por consola *"Eicar-Test-Signature FOUND"*
 **ENTONCES** el módulo `quarantine.js` debe tomar la ruta de dicho archivo
 **Y** el archivo debe ser movido instantáneamente a la ruta de cuarentena `.rustguard_quarantine`
 **Y** se debe insertar un registro en la tabla `quarantine` de SQLite detallando la ruta original, la fecha y el nombre de la amenaza.
 
-### Escenario 3: Restauración exitosa de un archivo en Cuarentena
+**Escenario 2.2: Manejo de error si el archivo malicioso está bloqueado**
+**DADO** que `clamscan` detectó un archivo malicioso
+**CUANDO** el módulo `quarantine.js` intenta mover el archivo a `.rustguard_quarantine` pero el Sistema Operativo lo tiene bloqueado en uso (EACCES/EBUSY)
+**ENTONCES** el archivo no debe ser movido
+**Y** se debe notificar inmediatamente al usuario de que la amenaza requiere intervención manual o permisos de Administrador para ser eliminada.
+
+### Criterio de Aceptación 3: Restauración de Archivos en Cuarentena
+**Escenario 3.1: Restauración exitosa de un archivo en Cuarentena**
 **DADO** que el usuario seleccionó la pestaña "Cuarentena"
 **Y** existe al menos un registro en estado "No Restaurado"
 **CUANDO** el usuario hace clic en la acción "Restaurar" asociada a dicho archivo
 **ENTONCES** el archivo físico debe ser retornado desde la carpeta `.rustguard_quarantine` hacia su ruta original en el disco
 **Y** el campo booleano `restored` del registro correspondiente en SQLite debe ser actualizado a `true` o `1`.
 
-### Escenario 4: Interfaz de Exportación de Reportes
+**Escenario 3.2: Restauración fallida porque la ruta original no existe**
+**DADO** que el usuario hace clic en "Restaurar"
+**CUANDO** el directorio padre original donde solía estar el archivo ha sido eliminado por el usuario previamente
+**ENTONCES** la aplicación debe mostrar un modal pidiendo al usuario seleccionar un nuevo directorio de destino
+**Y** el archivo debe moverse a la nueva ruta seleccionada, actualizando la base de datos como "restored".
+
+### Criterio de Aceptación 4: Exportación de Historiales y Reportes
+**Escenario 4.1: Interfaz de Exportación de Reportes exitosa**
 **DADO** que existen más de 3 registros históricos en la tabla `scan_history`
 **CUANDO** el usuario presiona "Exportar Historial"
 **ENTONCES** Electron debe levantar un modal nativo `dialog.showSaveDialog` del sistema operativo
 **Y** una vez que el usuario confirma el guardado, debe generarse un archivo de texto plano (`.txt`) estructurado y formateado con las fechas, duraciones y conteos de amenazas.
 
-### Escenario 5: Activación de Monitoreo en Tiempo Real (Watcher)
+**Escenario 4.2: Interfaz de Exportación cancelada por el usuario**
+**DADO** que el usuario presionó "Exportar Historial" y se abrió el `dialog.showSaveDialog`
+**CUANDO** el usuario presiona el botón "Cancelar" en la ventana del sistema operativo
+**ENTONCES** la aplicación no debe generar ningún archivo `.txt`
+**Y** la UI debe volver a su estado normal sin lanzar errores ni notificaciones.
+
+### Criterio de Aceptación 5: Monitoreo Activo (Watcher)
+**Escenario 5.1: Activación de Monitoreo en Tiempo Real (Watcher)**
 **DADO** que el servicio de Watcher se encuentra apagado
 **CUANDO** el usuario activa el *Toggle* de "Protección en Tiempo Real"
 **ENTONCES** Node.js debe instanciar la clase `chokidar` apuntando al directorio de *Downloads* del usuario
 **Y** al copiar un archivo nuevo en *Downloads*, el Watcher debe invocar silenciosamente `clamscan` para dicho archivo único, reportando un log de éxito o amenaza según corresponda.
+
+**Escenario 5.2: Desactivación limpia del Monitoreo en Tiempo Real**
+**DADO** que el Watcher está actualmente activo consumiendo eventos del sistema de archivos
+**CUANDO** el usuario apaga el *Toggle* de "Protección en Tiempo Real"
+**ENTONCES** Node.js debe llamar al método `.close()` de la instancia de `chokidar`
+**Y** no debe haber fugas de memoria, deteniendo cualquier análisis en segundo plano asociado a eventos futuros.
 
 ---
 
