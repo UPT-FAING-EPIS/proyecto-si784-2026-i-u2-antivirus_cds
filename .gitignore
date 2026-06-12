@@ -36,3 +36,9 @@ empaquetado/
 bin/*.exe
 bin/*.bin
 bin/clamav/
+
+# Test reports
+reports/
+playwright-report/
+test-results/
+.stryker-tmp/
