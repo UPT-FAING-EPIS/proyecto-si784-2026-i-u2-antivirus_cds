@@ -30,3 +30,19 @@ clamav_db/
 
 # Build output
 release/
+
+# Coverage and Reports
+coverage/
+playwright-report/
+test-results/
+reports/
+.features-gen/
+
+# Stryker
+.stryker-tmp/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
