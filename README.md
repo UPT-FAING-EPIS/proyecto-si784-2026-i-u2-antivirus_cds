@@ -2,17 +2,6 @@
 
 # 🛡️ RustGuard Antivirus 🛡️
 
-**UNIVERSIDAD PRIVADA DE TACNA**  
-**FACULTAD DE INGENIERÍA**  
-**Escuela Profesional de Ingeniería de Sistemas**
-
-**Curso:** Calidad y Pruebas de Software (2026)  
-**Docente:** Mag. Patrick Cuadros Quiroga  
-**Integrantes:**  
-*LLica Mamani, Jimmy Mijair (2023076789)*  
-*Sierra Ruiz, Iker Alberto (2023077090)*
-
----
 
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![Electron.js](https://img.shields.io/badge/Electron-191970?style=for-the-badge&logo=Electron&logoColor=white)
