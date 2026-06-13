@@ -6,20 +6,10 @@ import RealTime from './pages/RealTime';
 import Quarantine from './pages/Quarantine';
 import History from './pages/History';
 import ProjectAnalysis from './pages/ProjectAnalysis';
-import RansomwareAlertModal from './components/RansomwareAlertModal';
+
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
-  const [ransomwareAlertData, setRansomwareAlertData] = useState(null);
-
-  useEffect(() => {
-    // Listen for Ransomware alert
-    if (window.electronAPI) {
-      window.electronAPI.onRansomwareAlert((data) => {
-        setRansomwareAlertData(data);
-      });
-    }
-  }, []);
 
   const renderView = () => {
     switch (currentView) {
@@ -38,10 +28,7 @@ function App() {
       <Layout currentView={currentView} setCurrentView={setCurrentView}>
         {renderView()}
       </Layout>
-      <RansomwareAlertModal 
-        data={ransomwareAlertData} 
-        onDismiss={() => setRansomwareAlertData(null)} 
-      />
+
     </>
   );
 }

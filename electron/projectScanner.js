@@ -87,7 +87,7 @@ export async function runSecretScanner(targetPath) {
  * @returns {Promise<object>}
  */
 export async function runDependencyAnalyzer(targetPath) {
-  const binName = process.platform === 'win32' ? 'dep-analyzer.exe' : 'dep-analyzer';
+  const binName = process.platform === 'win32' ? 'depanalyzer.exe' : 'depanalyzer';
   const binPath = getBinPath(binName);
   
   return new Promise((resolve, reject) => {
@@ -98,7 +98,8 @@ export async function runDependencyAnalyzer(targetPath) {
     const proc = spawn(binPath, ['analyze', '.', '--tree-depth=0', '-o', 'json'], {
       cwd: targetPath,
       windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, OSS_INDEX_TOKEN: 'sonatype_pat_uFRzg1FEAmAwixEvfgDwKQnZcarh5bxxHP2TDIbab7IIiLcO' }
     });
     
     proc.stdout.on('data', chunk => { stdout += chunk.toString(); });
@@ -127,21 +128,82 @@ export async function runDependencyAnalyzer(targetPath) {
 }
 
 /**
- * Escanea un proyecto completo ejecutando ambos escáneres en paralelo.
+ * Ejecuta el escáner de malware usando ClamAV (clamdscan).
+ * @param {string} targetPath - Ruta del proyecto a analizar
+ * @returns {Promise<Array>}
+ */
+export async function runMalwareScanner(targetPath) {
+  const isDev = process.env.NODE_ENV === 'development';
+  const clamavDir = isDev
+    ? path.join(__dirname, '..', 'bin', 'clamav')
+    : path.join(process.resourcesPath, 'bin', 'clamav');
+    
+  const binName = process.platform === 'win32' ? 'clamdscan.exe' : 'clamdscan';
+  const binPath = path.join(clamavDir, binName);
+
+  const { CLAMD_CONF_PATH } = await import('./paths.js');
+
+  return new Promise((resolve, reject) => {
+    if (!fs.existsSync(binPath)) {
+      return reject(new Error(`ClamAV no encontrado en ${clamavDir}. No se pudo escanear en busca de malware.`));
+    }
+
+    let stdout = '';
+    let stderr = '';
+    
+    const proc = spawn(binPath, [`--config-file=${CLAMD_CONF_PATH}`, '--fdpass', targetPath], {
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    proc.stdout.on('data', chunk => { stdout += chunk.toString(); });
+    proc.stderr.on('data', chunk => { stderr += chunk.toString(); });
+
+    proc.on('error', err => reject(new Error(`Error al ejecutar clamdscan: ${err.message}`)));
+
+    proc.on('close', code => {
+      const results = [];
+      const lines = stdout.split('\n');
+      for (const line of lines) {
+         if (line.includes(' FOUND')) {
+            const parts = line.split(': ');
+            if (parts.length >= 2) {
+               results.push({
+                 file: parts[0].trim(),
+                 virus: parts[1].replace(' FOUND', '').trim()
+               });
+            }
+         }
+      }
+      
+      if (code !== 0 && code !== 1 && results.length === 0) {
+        reject(new Error(`clamdscan falló con código ${code}. Stdout: ${stdout.trim()} | Stderr: ${stderr.trim()}`));
+        return;
+      }
+      
+      resolve(results);
+    });
+  });
+}
+
+/**
+ * Escanea un proyecto completo ejecutando todos los escáneres en paralelo.
  * Retorna un objeto consolidado con los resultados de cada escáner y posibles errores.
  * @param {string} targetPath - Ruta del proyecto a analizar
- * @returns {Promise<{secrets: object|null, dependencies: object|null, errors: string[]}>}
+ * @returns {Promise<{secrets: object|null, dependencies: object|null, malware: Array|null, errors: string[]}>}
  */
 export async function scanFullProject(targetPath) {
   const errors = [];
 
-  const [secretsResult, depsResult] = await Promise.allSettled([
+  const [secretsResult, depsResult, malwareResult] = await Promise.allSettled([
     runSecretScanner(targetPath),
     runDependencyAnalyzer(targetPath),
+    runMalwareScanner(targetPath)
   ]);
 
   let secrets = null;
   let dependencies = null;
+  let malware = null;
 
   if (secretsResult.status === 'fulfilled') {
     secrets = secretsResult.value;
@@ -155,5 +217,11 @@ export async function scanFullProject(targetPath) {
     errors.push(`Dependencias: ${depsResult.reason.message}`);
   }
 
-  return { secrets, dependencies, errors };
+  if (malwareResult.status === 'fulfilled') {
+    malware = malwareResult.value;
+  } else {
+    errors.push(`Malware: ${malwareResult.reason.message}`);
+  }
+
+  return { secrets, dependencies, malware, errors };
 }

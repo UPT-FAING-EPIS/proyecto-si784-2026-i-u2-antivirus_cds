@@ -37,7 +37,7 @@ import { updateSignatures, scanTarget, quickScan, fullScan, cancelActiveScan } f
 import { quarantineFile, restoreFile, deletePermanently } from './quarantine.js';
 import { getQuarantineRecords, getScanHistory } from './db.js';
 import { startWatcher, stopWatcher, getWatcherStatus } from './watcher.js';
-import { startAntiRansomware, stopAntiRansomware, getAntiRansomwareStatus } from './honeypot.js';
+
 import { scanFullProject } from './projectScanner.js';
 import { ipcMain, dialog } from 'electron';
 
@@ -147,18 +147,7 @@ ipcMain.handle('get-realtime-status', async () => {
   return getWatcherStatus();
 });
 
-ipcMain.handle('toggle-antiransomware', async (event, enable) => {
-  if (enable) {
-    startAntiRansomware();
-  } else {
-    await stopAntiRansomware();
-  }
-  return getAntiRansomwareStatus();
-});
 
-ipcMain.handle('get-antiransomware-status', async () => {
-  return getAntiRansomwareStatus();
-});
 
 // Window controls
 ipcMain.on('window-minimize', () => {

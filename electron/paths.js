@@ -3,16 +3,7 @@ import path from 'path';
 import fs from 'fs';
 
 // Asegurarse de que userData existe
-// Si es ejecutable portable, usar el directorio del ejecutable
-const isPortable = !!process.env.PORTABLE_EXECUTABLE_DIR;
-const userDataPath = isPortable
-  ? path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'RustGuard_Data')
-  : app.getPath('userData');
-
-if (isPortable) {
-  // Sobrescribir el path de userData para que toda la app use este directorio local
-  app.setPath('userData', userDataPath);
-}
+const userDataPath = app.getPath('userData');
 
 export const LOGS_DIR = path.join(userDataPath, 'logs');
 export const DB_DIR = path.join(userDataPath, 'db');

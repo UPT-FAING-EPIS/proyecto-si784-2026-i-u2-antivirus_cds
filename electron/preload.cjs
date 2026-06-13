@@ -28,12 +28,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onThreatDetected: (callback) => ipcRenderer.on('threat-detected', (_event, data) => callback(data)),
   onRealtimeStatusChanged: (callback) => ipcRenderer.on('realtime-status-changed', (_event, data) => callback(data)),
 
-  // Anti-Ransomware methods
-  toggleAntiransomware: (enable) => ipcRenderer.invoke('toggle-antiransomware', enable),
-  getAntiransomwareStatus: () => ipcRenderer.invoke('get-antiransomware-status'),
-  onRansomwareAlert: (callback) => ipcRenderer.on('ransomware-alert', (_event, data) => callback(data)),
-  onAntiransomwareStatusChanged: (callback) => ipcRenderer.on('antiransomware-status-changed', (_event, data) => callback(data)),
-
   // Project Analysis methods
   scanProject: (targetPath) => ipcRenderer.invoke('scan-project', targetPath),
 

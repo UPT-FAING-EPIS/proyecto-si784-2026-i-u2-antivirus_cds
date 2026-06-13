@@ -46,18 +46,17 @@ export function writeLog(level, message) {
   // Write to file (T-13)
   currentLogStream.write(logLine + '\n');
   
-  // Emit to renderer via IPC (T-14)
+  // Emit to renderer via IPC (T-14) — only to the main window to avoid duplicates
   const windows = BrowserWindow.getAllWindows();
-  windows.forEach(win => {
-    if (win && !win.isDestroyed()) {
-      win.webContents.send('log-message', {
-        timestamp,
-        level,
-        message,
-        rawLine: logLine
-      });
-    }
-  });
+  const mainWin = windows.find(w => !w.isDestroyed() && w.getTitle() !== '' && w.webContents.getURL().includes('localhost'));
+  if (mainWin) {
+    mainWin.webContents.send('log-message', {
+      timestamp,
+      level,
+      message,
+      rawLine: logLine
+    });
+  }
 }
 
 /**

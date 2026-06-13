@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FolderSearch, KeyRound, Package, AlertTriangle, ShieldAlert, Loader2, FileCode2, ChevronDown, ChevronRight, Info } from 'lucide-react';
+import { FolderSearch, KeyRound, Package, AlertTriangle, ShieldAlert, Loader2, FileCode2, ChevronDown, ChevronRight, Info, Bug } from 'lucide-react';
 
 const SEVERITY_CONFIG = {
   CRITICAL: { color: 'var(--accent-danger)', bg: 'rgba(255,77,79,0.12)', border: 'rgba(255,77,79,0.25)', label: 'CRÍTICO' },
@@ -116,6 +116,7 @@ export default function ProjectAnalysis() {
   const depsCount = depsList.length;
   const criticalCount = depsList.filter(d => d.severity?.toUpperCase() === 'CRITICAL').length;
   const highCount = depsList.filter(d => d.severity?.toUpperCase() === 'HIGH').length;
+  const malwareList = results?.malware || [];
 
   // Empty state
   if (!selectedPath && !loading && !results) {
@@ -198,11 +199,12 @@ export default function ProjectAnalysis() {
       {!loading && results && (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-4 gap-3 mb-5">
+          <div className="grid grid-cols-5 gap-3 mb-5">
             <StatCard icon={KeyRound} label="Secretos" value={secretsCount} color="var(--accent-warning)" />
             <StatCard icon={Package} label="Vulnerabilidades" value={depsCount} color="var(--accent-info)" />
             <StatCard icon={ShieldAlert} label="Críticas" value={criticalCount} color="var(--accent-danger)" />
             <StatCard icon={AlertTriangle} label="Altas" value={highCount} color="#FF7A45" />
+            <StatCard icon={Bug} label="Malware" value={malwareList.length} color="var(--accent-danger)" />
           </div>
 
           {/* Tabs */}
@@ -236,6 +238,22 @@ export default function ProjectAnalysis() {
               {depsCount > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 rounded-full text-xs bg-[var(--accent-info)]/20 text-[var(--accent-info)]">
                   {depsCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('malware')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === 'malware'
+                  ? 'bg-[var(--accent-danger)]/15 text-[var(--accent-danger)]'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)]'
+              }`}
+            >
+              <Bug size={15} />
+              Archivos Sospechosos
+              {malwareList.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded-full text-xs bg-[var(--accent-danger)]/20 text-[var(--accent-danger)]">
+                  {malwareList.length}
                 </span>
               )}
             </button>
@@ -360,6 +378,43 @@ export default function ProjectAnalysis() {
                             </tr>
                           )}
                         </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            )}
+            {/* Malware Tab */}
+            {activeTab === 'malware' && (
+              malwareList.length === 0 ? (
+                <div className="flex-1 flex flex-col justify-center items-center text-[var(--text-muted)] p-8 text-center">
+                  <Bug size={48} className="mb-4 opacity-20" />
+                  <h3 className="text-lg font-semibold text-[var(--text-primary)]">Sin archivos sospechosos</h3>
+                  <p className="mt-2 text-sm">No se encontraron firmas de malware o archivos maliciosos en el proyecto.</p>
+                </div>
+              ) : (
+                <div className="overflow-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-[var(--bg-base)] border-b border-[var(--border)] text-[var(--text-muted)] uppercase text-xs sticky top-0">
+                      <tr>
+                        <th className="px-5 py-3 font-semibold">Archivo</th>
+                        <th className="px-5 py-3 font-semibold">Amenaza Detectada</th>
+                        <th className="px-5 py-3 font-semibold">Severidad</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {malwareList.map((item, idx) => (
+                        <tr key={idx} className="hover:bg-[var(--bg-card)] transition-colors">
+                          <td className="px-5 py-3 font-mono text-xs text-[var(--text-primary)] truncate max-w-[250px]" title={item.file}>
+                            {item.file}
+                          </td>
+                          <td className="px-5 py-3 font-mono text-xs text-[var(--accent-danger)]">
+                            {item.virus}
+                          </td>
+                          <td className="px-5 py-3">
+                            <SeverityBadge severity="CRITICAL" />
+                          </td>
+                        </tr>
                       ))}
                     </tbody>
                   </table>
