@@ -2,9 +2,9 @@ name: Terraform Infrastructure
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "codigo" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "codigo" ]
 
 jobs:
   terraform:
