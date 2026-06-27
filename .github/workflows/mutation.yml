@@ -2,7 +2,7 @@ name: Mutation Testing
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "codigo" ]
 
 permissions:
   contents: read
