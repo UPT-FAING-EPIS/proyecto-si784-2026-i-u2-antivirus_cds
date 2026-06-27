@@ -2,7 +2,7 @@ name: E2E and BDD Tests
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "codigo" ]
 
 jobs:
   test:
