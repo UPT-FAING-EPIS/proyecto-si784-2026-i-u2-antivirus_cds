@@ -2,9 +2,9 @@ name: Static Analysis (Snyk & Semgrep)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "codigo" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "codigo" ]
 
 jobs:
   semgrep:
