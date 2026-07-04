@@ -1,0 +1,412 @@
+name: "Deploy Test Reports to GitHub Pages"
+
+on:
+  push:
+    branches: ["codigo"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-deploy"
+  cancel-in-progress: true
+
+jobs:
+  # ─── Job 1: Unit Tests + Coverage ───────────────────────────────
+  unit-tests:
+    name: "🧪 Unit Tests & Coverage"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci || npm install
+      - name: Run Vitest with Coverage
+        run: npm run test:coverage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: ./coverage/
+          retention-days: 5
+
+  # ─── Job 2: Mutation Testing (Stryker) ──────────────────────────
+  mutation-tests:
+    name: "👾 Mutation Testing (Stryker)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci || npm install
+      - name: Run Stryker Mutation Tests
+        run: npx stryker run || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: ./reports/mutation/
+          retention-days: 5
+
+  # ─── Job 3: BDD / E2E Tests (Playwright) ───────────────────────
+  bdd-tests:
+    name: "📖 BDD & E2E Tests (Playwright)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci || npm install
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+      - name: Generate BDD tests
+        run: npx bddgen || true
+      - name: Run Playwright BDD Tests
+        run: npx playwright test || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bdd-report
+          path: playwright-report/
+          retention-days: 5
+      - name: Collect UI videos
+        if: always()
+        run: |
+          mkdir -p ui-videos
+          find test-results -name "*.webm" -exec cp {} ui-videos/ \; 2>/dev/null || true
+          find test-results -name "*.mp4" -exec cp {} ui-videos/ \; 2>/dev/null || true
+          if [ -z "$(ls -A ui-videos 2>/dev/null)" ]; then
+            echo "<html><body><h2>No se generaron videos en esta ejecución.</h2></body></html>" > ui-videos/index.html
+          else
+            echo "<html><head><title>Videos de Pruebas UI</title><style>body{font-family:sans-serif;background:#0d1117;color:#c9d1d9;padding:2rem}h1{color:#58a6ff}a{color:#58a6ff}.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:1rem;margin:0.5rem 0}video{max-width:100%;border-radius:8px}</style></head><body><h1>🎬 Videos de Pruebas UI (Playwright)</h1>" > ui-videos/index.html
+            for f in ui-videos/*.webm ui-videos/*.mp4; do
+              [ -f "$f" ] && echo "<div class='card'><p>$(basename $f)</p><video controls src='$(basename $f)'></video></div>" >> ui-videos/index.html
+            done
+            echo "</body></html>" >> ui-videos/index.html
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-videos
+          path: ui-videos/
+          retention-days: 5
+
+  # ─── Job 4: Static Analysis (Semgrep) ──────────────────────────
+  semgrep:
+    name: "🔍 Semgrep Analysis"
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Semgrep
+        run: |
+          semgrep scan --config auto --json -o report.json . || true
+      - name: Generate Semgrep HTML Report
+        run: |
+          python3 -c "
+          import json, html, os
+          try:
+              with open('report.json') as f:
+                  data = json.load(f)
+              results = data.get('results', [])
+              out = '<html><head><title>Semgrep Report</title>'
+              out += '<style>body{font-family:sans-serif;background:#0d1117;color:#c9d1d9;padding:2rem;max-width:1200px;margin:auto}h1{color:#58a6ff}table{width:100%;border-collapse:collapse;margin-top:1rem}th,td{padding:10px;border:1px solid #30363d;text-align:left}th{background:#161b22;color:#58a6ff}tr:nth-child(even){background:#161b22}.badge{padding:2px 8px;border-radius:4px;font-size:0.8em}.error{background:#f85149;color:white}.warning{background:#d29922;color:white}.info{background:#58a6ff;color:white}</style></head><body>'
+              out += f'<h1>🔍 Resultados de Semgrep</h1><p>Total hallazgos: {len(results)}</p>'
+              if results:
+                  out += '<table><tr><th>#</th><th>Severidad</th><th>Regla</th><th>Archivo</th><th>Línea</th><th>Mensaje</th></tr>'
+                  for i, r in enumerate(results, 1):
+                      sev = r.get('extra',{}).get('severity','info')
+                      cls = 'error' if sev=='ERROR' else ('warning' if sev=='WARNING' else 'info')
+                      out += f\"<tr><td>{i}</td><td><span class='badge {cls}'>{html.escape(sev)}</span></td><td>{html.escape(r.get('check_id',''))}</td><td>{html.escape(r.get('path',''))}</td><td>{r.get('start',{}).get('line','')}</td><td>{html.escape(r.get('extra',{}).get('message',''))}</td></tr>\"
+                  out += '</table>'
+              else:
+                  out += '<p style=\"color:#3fb950\">✅ No se encontraron hallazgos de seguridad.</p>'
+              out += '</body></html>'
+              os.makedirs('semgrep-report', exist_ok=True)
+              with open('semgrep-report/index.html','w') as f:
+                  f.write(out)
+          except Exception as e:
+              os.makedirs('semgrep-report', exist_ok=True)
+              with open('semgrep-report/index.html','w') as f:
+                  f.write(f'<html><body><h1>Error generando HTML: {e}</h1></body></html>')
+          " || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-report
+          path: semgrep-report/
+          retention-days: 5
+
+  # ─── Job 5: Snyk Vulnerability Scan ────────────────────────────
+  snyk:
+    name: "🛡️ Snyk Vulnerability Scan"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci || npm install
+      - name: Run Snyk
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          npx snyk test --json > snyk-results.json 2>/dev/null || true
+      - name: Generate Snyk HTML Report
+        run: |
+          node -e "
+          const fs = require('fs');
+          fs.mkdirSync('snyk-report', {recursive:true});
+          let data = {};
+          try { data = JSON.parse(fs.readFileSync('snyk-results.json','utf8')); } catch(e) {}
+          const vulns = (data.vulnerabilities || []);
+          let html = '<html><head><title>Snyk Report</title><style>body{font-family:sans-serif;background:#0d1117;color:#c9d1d9;padding:2rem;max-width:1200px;margin:auto}h1{color:#58a6ff}table{width:100%;border-collapse:collapse;margin-top:1rem}th,td{padding:10px;border:1px solid #30363d;text-align:left}th{background:#161b22;color:#58a6ff}tr:nth-child(even){background:#161b22}.badge{padding:2px 8px;border-radius:4px;font-size:0.8em}.critical{background:#f85149;color:white}.high{background:#da3633;color:white}.medium{background:#d29922;color:white}.low{background:#58a6ff;color:white}</style></head><body>';
+          html += '<h1>🛡️ Reporte de Vulnerabilidades (Snyk)</h1>';
+          html += '<p>Total vulnerabilidades: ' + vulns.length + '</p>';
+          if(vulns.length) {
+            html += '<table><tr><th>#</th><th>Severidad</th><th>Paquete</th><th>Versión</th><th>Título</th></tr>';
+            vulns.forEach((v,i) => {
+              const cls = v.severity === 'critical' ? 'critical' : (v.severity === 'high' ? 'high' : (v.severity === 'medium' ? 'medium' : 'low'));
+              html += '<tr><td>'+(i+1)+'</td><td><span class=\"badge '+cls+'\">'+(v.severity||'unknown')+'</span></td><td>'+(v.packageName||'')+'</td><td>'+(v.version||'')+'</td><td>'+(v.title||'')+'</td></tr>';
+            });
+            html += '</table>';
+          } else {
+            html += '<p style=\"color:#3fb950\">✅ No se encontraron vulnerabilidades o no se configuró SNYK_TOKEN.</p>';
+          }
+          html += '</body></html>';
+          fs.writeFileSync('snyk-report/index.html', html);
+          " || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snyk-report
+          path: snyk-report/
+          retention-days: 5
+
+  # ─── Job 6: Deploy all reports to gh-pages ─────────────────────
+  deploy:
+    name: "🚀 Deploy Reports to GitHub Pages"
+    runs-on: ubuntu-latest
+    needs: [unit-tests, mutation-tests, bdd-tests, semgrep, snyk]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create deploy directory
+        run: mkdir -p deploy
+
+      - name: Download Coverage Report
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: deploy/coverage
+        continue-on-error: true
+
+      - name: Download Mutation Report
+        uses: actions/download-artifact@v4
+        with:
+          name: mutation-report
+          path: deploy/mutation
+        continue-on-error: true
+
+      - name: Download BDD Report
+        uses: actions/download-artifact@v4
+        with:
+          name: bdd-report
+          path: deploy/bdd
+        continue-on-error: true
+
+      - name: Download UI Videos
+        uses: actions/download-artifact@v4
+        with:
+          name: ui-videos
+          path: deploy/ui-videos
+        continue-on-error: true
+
+      - name: Download Semgrep Report
+        uses: actions/download-artifact@v4
+        with:
+          name: semgrep-report
+          path: deploy/semgrep
+        continue-on-error: true
+
+      - name: Download Snyk Report
+        uses: actions/download-artifact@v4
+        with:
+          name: snyk-report
+          path: deploy/snyk
+        continue-on-error: true
+
+      - name: Create Dashboard index.html
+        run: |
+          cat > deploy/index.html << 'DASHBOARD_EOF'
+          <!DOCTYPE html>
+          <html lang="es">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>RustGuard - Dashboard de Calidad y Pruebas</title>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+            <style>
+              :root {
+                --bg-primary: #0d1117;
+                --bg-card: #161b22;
+                --border: #30363d;
+                --text-primary: #c9d1d9;
+                --text-secondary: #8b949e;
+                --accent-blue: #58a6ff;
+                --accent-green: #3fb950;
+                --accent-purple: #bc8cff;
+                --accent-orange: #d29922;
+                --accent-red: #f85149;
+                --accent-cyan: #39d2c0;
+              }
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body {
+                font-family: 'Inter', -apple-system, sans-serif;
+                background: var(--bg-primary);
+                color: var(--text-primary);
+                min-height: 100vh;
+                padding: 2rem;
+              }
+              .container { max-width: 1100px; margin: 0 auto; }
+              .header {
+                text-align: center;
+                padding: 3rem 1rem 2rem;
+                background: linear-gradient(135deg, rgba(88,166,255,0.1) 0%, rgba(188,140,255,0.1) 100%);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                margin-bottom: 2rem;
+              }
+              .header h1 {
+                font-size: 2.2rem;
+                font-weight: 700;
+                background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                margin-bottom: 0.5rem;
+              }
+              .header p { color: var(--text-secondary); font-size: 1.05rem; }
+              .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+                gap: 1.2rem;
+              }
+              .card {
+                background: var(--bg-card);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 1.5rem;
+                transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+                text-decoration: none;
+                color: inherit;
+                display: flex;
+                align-items: flex-start;
+                gap: 1rem;
+              }
+              .card:hover {
+                transform: translateY(-4px);
+                border-color: var(--accent-blue);
+                box-shadow: 0 8px 24px rgba(88,166,255,0.12);
+              }
+              .card-icon {
+                font-size: 2rem;
+                min-width: 48px;
+                height: 48px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 10px;
+              }
+              .card-icon.green  { background: rgba(63,185,80,0.15); }
+              .card-icon.purple { background: rgba(188,140,255,0.15); }
+              .card-icon.blue   { background: rgba(88,166,255,0.15); }
+              .card-icon.orange { background: rgba(210,153,34,0.15); }
+              .card-icon.red    { background: rgba(248,81,73,0.15); }
+              .card-icon.cyan   { background: rgba(57,210,192,0.15); }
+              .card-body h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.3rem; }
+              .card-body p { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.4; }
+              .footer {
+                text-align: center;
+                margin-top: 3rem;
+                padding: 1.5rem;
+                color: var(--text-secondary);
+                font-size: 0.85rem;
+                border-top: 1px solid var(--border);
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>🛡️ RustGuard — Dashboard de Calidad</h1>
+                <p>Resultados automatizados de pruebas y análisis de código vía GitHub Actions</p>
+              </div>
+              <div class="grid">
+                <a class="card" href="coverage/index.html">
+                  <div class="card-icon green">🟢</div>
+                  <div class="card-body">
+                    <h3>Cobertura de Pruebas Unitarias</h3>
+                    <p>Reporte HTML de cobertura generado por Vitest + V8 (statements, branches, functions, lines).</p>
+                  </div>
+                </a>
+                <a class="card" href="mutation/mutation.html">
+                  <div class="card-icon purple">👾</div>
+                  <div class="card-body">
+                    <h3>Pruebas de Mutación (Stryker)</h3>
+                    <p>Reporte de mutation testing que mide la calidad real de las pruebas unitarias.</p>
+                  </div>
+                </a>
+                <a class="card" href="bdd/index.html">
+                  <div class="card-icon blue">📖</div>
+                  <div class="card-body">
+                    <h3>Pruebas BDD / E2E (Playwright)</h3>
+                    <p>Resultados de las pruebas de comportamiento con escenarios Gherkin y Playwright.</p>
+                  </div>
+                </a>
+                <a class="card" href="ui-videos/index.html">
+                  <div class="card-icon cyan">🎬</div>
+                  <div class="card-body">
+                    <h3>Videos de Pruebas UI</h3>
+                    <p>Grabaciones de video de las pruebas de interfaz ejecutadas en Playwright.</p>
+                  </div>
+                </a>
+                <a class="card" href="snyk/index.html">
+                  <div class="card-icon red">🛡️</div>
+                  <div class="card-body">
+                    <h3>Vulnerabilidades (Snyk)</h3>
+                    <p>Análisis de dependencias en busca de vulnerabilidades conocidas (CVE).</p>
+                  </div>
+                </a>
+                <a class="card" href="semgrep/index.html">
+                  <div class="card-icon orange">🔍</div>
+                  <div class="card-body">
+                    <h3>Análisis Estático (Semgrep)</h3>
+                    <p>Detección de patrones de código inseguro mediante análisis estático SAST.</p>
+                  </div>
+                </a>
+              </div>
+              <div class="footer">
+                <p>RustGuard Security Suite &copy; 2026 — Generado automáticamente por GitHub Actions</p>
+              </div>
+            </div>
+          </body>
+          </html>
+          DASHBOARD_EOF
+
+      - name: Create .nojekyll
+        run: touch deploy/.nojekyll
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./deploy
+          publish_branch: gh-pages
+          force_orphan: false
+          keep_files: true
